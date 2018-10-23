@@ -1,0 +1,8 @@
+
+
+charge(custer, 12).
+charge(custer, 9).
+charge(custer, 23).
+
+charge(custommy, 11).
+charge(custommy, 0).

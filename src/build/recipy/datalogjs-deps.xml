@@ -1,0 +1,5 @@
+<folder name="www" xmlns="http://recipy.hoverview.org/default">
+	<folder name="deps">
+		<artifact name="xslt" project="justice"/>
+	</folder>
+</folder>

@@ -1,0 +1,11 @@
+
+
+uk(X) :-
+	britain(X).
+
+uk(northernireland).
+
+britain(scotland).
+britain(england).
+britain(wales).
+	

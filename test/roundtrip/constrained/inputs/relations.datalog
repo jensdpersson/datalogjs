@@ -1,0 +1,13 @@
+
+blond(larsbrundin).
+blond(bella).
+
+tjock(larsbrundin).
+tjock(husse).
+
+konstig(larsbrundin).
+
+lars_brundin(X) :-
+	blond(X),
+	tjock(X),
+	konstig(X).

@@ -1,0 +1,4 @@
+#The sample predicate 'color'
+color(red).
+color(green).
+color(blue).

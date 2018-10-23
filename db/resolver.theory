@@ -1,0 +1,25 @@
+
+
+path(P, P') :- 
+  lim(P, P').
+  
+path(P, P') :-
+  convoy_path(P, P, P').
+  
+convoy_path(Sea, From, To) :-
+  lim(Sea, To),	
+  loc(F, S),
+  order_convoy(F, From, To),
+  path(S, P1)
+
+convoy_chain(S, P, P') :-
+  order_convoy(F, P, P')	
+  lim(S, P).
+convoy_chain(S, P) :-
+  lim(S, S'),
+  ter(S', sea),
+  loc(F, S'),
+  order_convoy(F, P, P')	
+  
+  
+				

@@ -1,0 +1,70 @@
+terrain(c0x0,ocean).
+terrain(c1x0,ocean).
+terrain(c2x0,ocean).
+terrain(c0x1,ocean).
+terrain(c1x1,jungle).
+terrain(c2x1,jungle).
+terrain(c0x2,ocean).
+terrain(c1x2,jungle).
+terrain(c2x2,volcano).
+
+#dominator(ocean, ocean).
+#dominator(jungle, jungle).
+#dominator(volcano, jungle).
+
+
+north(Tile, Terr) :-
+  nabo(Tile, Othertile, n),
+  terrain(Othertile, Terr).
+
+nabo(c0x0, c1x0, e2).
+nabo(c0x0, c1x1, se).
+nabo(c0x0, c0x1, s).
+
+nabo(c1x0, c0x0, w).
+nabo(c1x0, c2x0, e).
+nabo(c1x0, c2x1, se).
+nabo(c1x0, c1x1, s).
+nabo(c1x0, c0x1, sw).
+
+nabo(c2x0, c1x0, w).
+nabo(c2x0, c1x0, s).
+nabo(c2x0, c1x0, sw).
+
+
+nabo(c0x1, c1x0, e).
+nabo(c0x1, c1x1, se).
+nabo(c0x1, c0x1, s).
+nabo(c0x1, c1x1, se).
+nabo(c0x1, c0x1, s).
+
+nabo(c1x1, c1x0, n).
+nabo(c1x1, c2x0, ne).
+nabo(c1x1, c2x1, e).
+nabo(c1x1, c2x2, se).
+nabo(c1x1, c1x2, s).
+nabo(c1x1, c0x2, sw).
+nabo(c1x1, c0x1, w).
+nabo(c1x1, c0x0, nw).
+
+nabo(c2x1, c2x0, n).
+nabo(c2x1, c2x2, s).
+nabo(c2x1, c1x2, sw).
+nabo(c2x1, c1x1, w).
+nabo(c2x1, c1x0, nw).
+
+
+
+nabo(c0x2, c0x1, n).
+nabo(c0x2, c1x1, ne).
+nabo(c0x2, c1x2, e).
+
+nabo(c1x2, c0x0, w).
+nabo(c1x2, c1x0, nw).
+nabo(c1x2, c1x0, n).
+nabo(c1x2, c1x0, ne).
+nabo(c1x2, c1x0, e).
+
+nabo(c2x2, c1x2, w).
+nabo(c2x2, c1x1, nw).
+nabo(c2x2, c2x1, n).

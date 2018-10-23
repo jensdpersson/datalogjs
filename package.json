@@ -1,0 +1,19 @@
+{
+  "name": "datalogjs",
+  "version": "0.0.0",
+  "description": "A datalog engine",
+  "main": "datalog.js",
+  "scripts": {
+    "test": "node tests"
+  },
+  "keywords": [
+    "datalog"
+  ],
+  "author": "jensdpersson",
+  "license": "BSD",
+  "dependencies": {},
+  "directories": {
+    "test": "test"
+  },
+  "devDependencies": {}
+}

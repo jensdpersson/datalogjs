@@ -1,0 +1,7 @@
+parent(vera, jan).
+parent(jan, jens).
+parent(jan, linn).
+parent(linn, jonatan).
+parent(jens, nike).
+parent(rebecka, nike).
+parent(ake, rebecka).
