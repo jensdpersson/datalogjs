@@ -1,34 +1,34 @@
 
-var Lexer = require('./Lexer.js');
-var Rule = require('./Rule.js');
-var Term = require('./Term');
-var util = require('util');
+(function(){
 
-module.exports = (function(){
+	var Lexer = datalog.Lexer;
+	var Rule = datalog.Rule;
+	var Term = datalog.Term;
 	
-	var Parser = function(){
+	datalog.Parser = function(){
 		this.ruleListeners = [];
 		this.syntaxErrorListeners = [];
 		this.successListeners = [];
 		this.rule = null;
 	};
-	
-	Parser.prototype.emitRule = function(rule){
+
+	datalog.Parser.prototype.emitRule = function(rule){
 		this.ruleListeners.forEach(function(listener){
 			listener(rule);
 		});
 	}
-	Parser.prototype.emitSyntaxError = function(syntaxError){
+
+	datalog.Parser.prototype.emitSyntaxError = function(syntaxError){
 		this.syntaxErrorListeners.forEach(function(listener){
 			listener(syntaxError);
 		});
 	}
-	Parser.prototype.emitSuccess = function(success){
+	datalog.Parser.prototype.emitSuccess = function(success){
 		this.successListeners.forEach(function(listener){
 			listener(success);
 		});
 	}
-	Parser.prototype.on = function(event, listener){
+	datalog.Parser.prototype.on = function(event, listener){
 		if(event == 'rule'){
 			this.ruleListeners.push(listener);
 		} else if(event == 'syntaxError'){
@@ -41,7 +41,7 @@ module.exports = (function(){
 		return this;
 	}
 	
-	Parser.prototype.beforeRule = function(token){
+	datalog.Parser.prototype.beforeRule = function(token){
 		if(token.type == Lexer.NAME){
 			this.rule = new Rule(token.text);
 			return this.afterHeadPredicate
@@ -56,7 +56,7 @@ module.exports = (function(){
 		}
 	}
 	
-	Parser.prototype.afterHeadPredicate = function(token){
+	datalog.Parser.prototype.afterHeadPredicate = function(token){
 		if(token.type == Lexer.LPAR){
 			return this.expectHeadParam;
 		} else if(token.type == Lexer.WHITE){
@@ -67,7 +67,7 @@ module.exports = (function(){
 		}
 	}
 	
-	Parser.prototype.expectHeadParam = function(token){
+	datalog.Parser.prototype.expectHeadParam = function(token){
 		if(token.type == Lexer.NAME){
 			this.paramOrAggregate = token.text;
 			return this.expectHeadVarOrParamCompletion;
@@ -86,7 +86,7 @@ module.exports = (function(){
 		}
 	}
 	
-	Parser.prototype.expectHeadParamCompletion = function(token){
+	datalog.Parser.prototype.expectHeadParamCompletion = function(token){
 		if(token.type == Lexer.WHITE){
 			return this.expectHeadParamCompletion;
 		}
@@ -97,7 +97,7 @@ module.exports = (function(){
 		}
 	}
 	
-	Parser.prototype.expectHeadVarOrParamCompletion = function(token){
+	datalog.Parser.prototype.expectHeadVarOrParamCompletion = function(token){
 		if(token.type == Lexer.WHITE){
 			return this.expectHeadVarOrParamCompletion;
 		}
@@ -119,7 +119,7 @@ module.exports = (function(){
 		}
 	}
 	
-	Parser.prototype.afterHead = function(token){
+	datalog.Parser.prototype.afterHead = function(token){
 		if(token.type == Lexer.DOT){
 			this.emitRule(this.rule);
 			this.rule = null;
@@ -133,7 +133,7 @@ module.exports = (function(){
 		}
 	}
 	
-	Parser.prototype.beforeSubGoal = function(token){
+	datalog.Parser.prototype.beforeSubGoal = function(token){
 		if(token.type == Lexer.WHITE){
 			return this.beforeSubGoal;
 		} else if (token.type == Lexer.NAME){
@@ -142,7 +142,7 @@ module.exports = (function(){
 		} 
 	}
 	
-	Parser.prototype.afterBodyPredicate = function(token){
+	datalog.Parser.prototype.afterBodyPredicate = function(token){
 		if(token.type == Lexer.LPAR){
 			return this.expectBodyParam;
 		} else if(token.type == Lexer.WHITE){
@@ -153,7 +153,7 @@ module.exports = (function(){
 		}
 	}
 	
-	Parser.prototype.expectBodyParam = function(token){
+	datalog.Parser.prototype.expectBodyParam = function(token){
 		if(token.type == Lexer.NAME){
 			this.rule.lastSubGoal().addTerm(Term.constant(token.text));
 			return this.expectBodyParamCompletion;
@@ -170,7 +170,7 @@ module.exports = (function(){
 		}
 	}
 	
-	Parser.prototype.expectBodyParamCompletion = function(token){
+	datalog.Parser.prototype.expectBodyParamCompletion = function(token){
 		if(token.type == Lexer.WHITE){
 			return this.expectBodyParamCompletion;
 		}
@@ -181,7 +181,7 @@ module.exports = (function(){
 		}
 	}
 	
-	Parser.prototype.afterSubGoal = function(token){
+	datalog.Parser.prototype.afterSubGoal = function(token){
 		if(token.type == Lexer.DOT){
 			this.emitRule(this.rule);
 			this.rule = null;
@@ -195,7 +195,7 @@ module.exports = (function(){
 		}
 	}
 	
-	Parser.prototype.parse = function(string){
+	datalog.Parser.prototype.parse = function(string){
 		var lexer = new Lexer(string);
 		var state = this.beforeRule;
 		while(lexer.hasMoreInput()){
@@ -209,7 +209,5 @@ module.exports = (function(){
 			state = newstate;
 		}
 		this.emitSuccess("Parser reached EOF without error");
-	}
-	
-	return Parser;
+	}	
 })();

@@ -1,15 +1,15 @@
 
-var util = require('util');
-var Term = require('./Term');
 
-module.exports = (function(){
+(function(){
 
-	var Grouping = function(){
+	var Term = datalog.Term;
+
+	datalog.Grouping = function(){
 		this.values = {};
 		this.next = null;
 	};
 
-	Grouping.prototype.merge = function(term, nextFactory){
+	datalog.Grouping.prototype.merge = function(term, nextFactory){
 		console.log("Grouping.merge");
 		var next = this.values[term.symbol];
 		if(!next){
@@ -19,7 +19,7 @@ module.exports = (function(){
 		return next;
 	}
 
-  Grouping.prototype.report = function(terms, callback){
+	datalog.Grouping.prototype.report = function(terms, callback){
 		console.log("REPORT Grouping " + this);
 		for(var value in this.values){
 			var termsCopy = terms.copy();
@@ -34,10 +34,7 @@ module.exports = (function(){
 		}
 	}
 
-	Grouping.prototype.toString = function(){
-		return util.inspect(this);
-	}
-
-	return Grouping;
-
+	//Grouping.prototype.toString = function(){
+	//	return util.inspect(this);
+	//}
 })();

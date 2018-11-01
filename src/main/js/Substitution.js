@@ -1,6 +1,5 @@
-var insp = require('util').inspect;
 
-module.exports = (function(){
+datalog.Substitution = (function(){
 
 	var Substitution = function(parent){//a, b){
 		//this.a = a;

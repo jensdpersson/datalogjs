@@ -1,16 +1,14 @@
 
-var util = require('util');
-var Tuple = require('./Tuple');
+(function(){
 
+	var Tuple = datalog.Tuple;
 
-module.exports = (function(){
-
-	var Aggregation = function(aggs){
+	datalog.Aggregation = function(aggs){
 		this.aggs = aggs;
 		this.root = aggs[0].create();
 	};
 
-	Aggregation.prototype.merge = function(solution){
+	datalog.Aggregation.prototype.merge = function(solution){
 		var slot = this.root;
 		this.predicateSymbol = solution.predicateSymbol();
 		for(var i=1;i<solution.slots.length;i++){
@@ -32,11 +30,9 @@ module.exports = (function(){
 		}
 	};
 
-	Aggregation.prototype.emitSolutions = function(callback){
+	datalog.Aggregation.prototype.emitSolutions = function(callback){
 		//console.log("EmitSolut");
 		this.root.report(new Tuple(this.predicateSymbol), callback);
 	}
-
-	return Aggregation;
 
 })();

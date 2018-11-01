@@ -1,14 +1,19 @@
-var util = require('util');
-var Aggregation = require('./Aggregation');
-var Substitution = require('./Substitution');
 
-module.exports = (function(){
-	var Goal = function(tuple, theory){
+
+(function(){
+
+	var Aggregation = datalog.Aggregation;
+	var Substitution = datalog.Substitution;
+	var Tuple = datalog.Tuple;
+
+	datalog.Goal = function(tuple, theory){
 		//this.solutionListeners = [];
 		//this.tuple = tuple;
 		this.theory = theory;
 		this.solutionTemplate = tuple.renamedCopy("'");
 	};
+
+	var Goal = datalog.Goal;
 
 	//Goal.prototype.on = function(evt, listener){
 	//	this.solutionListeners.push(listener);
@@ -20,11 +25,11 @@ module.exports = (function(){
 	//	});
 	//}
 
-	Goal.prototype.toString = function(){
+	datalog.Goal.prototype.toString = function(){
 		return this.solutionTemplate.toString();
 	}
 
-	Goal.prototype.solve = function(callback){
+	datalog.Goal.prototype.solve = function(callback){
 
 		//onDone = onDone || function(){};
 
@@ -100,6 +105,4 @@ module.exports = (function(){
 			});
 		});
 	}
-
-	return Goal;
 })();

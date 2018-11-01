@@ -1,4 +1,4 @@
-module.exports = (function(){
+datalog.Lexer = (function(){
 
 	var Lexer = function(input){
 		this.left = input;

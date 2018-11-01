@@ -1,10 +1,12 @@
 
-var Predicate = require('./Predicate.js');
-var Goal = require('./Goal.js');
 
-module.exports = (function(){
 
-	function Theory(){
+ (function(){
+
+	var Predicate = datalog.Predicate;
+	var Goal = datalog.Goal;
+
+	datalog.Program = function(){
 		this.rules = [];
 		this.predicates = {};
 
@@ -15,7 +17,7 @@ module.exports = (function(){
 		}
 	}
 
-	Theory.prototype.addRule = function(rule){
+	datalog.Program.prototype.addRule = function(rule){
 		this.rules.push(rule);
 
 		var predicateId = rule.head.predicateId();
@@ -28,7 +30,7 @@ module.exports = (function(){
 
 	}
 
-	Theory.prototype.query = function(goals, callback){
+	datalog.Program.prototype.query = function(goals, callback){
 		var answerset = [];
 		for(var ix in goals){
 			var goal = new Goal(goals[ix].head, this);
@@ -43,7 +45,7 @@ module.exports = (function(){
 		callback(answerset);
 	}
 
-	Theory.prototype.validate = function(){
+	datalog.Program.prototype.validate = function(){
 		var errors = [];
 		for(var predId in predicates){
 			var pred = predicates[predId];
@@ -55,6 +57,4 @@ module.exports = (function(){
 		}
 		return errors;
 	}
-
-	return Theory;
 })();

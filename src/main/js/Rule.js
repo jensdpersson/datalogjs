@@ -1,12 +1,14 @@
 
 
-module.exports = (function(){
+datalog.Rule = (function(){
 
 	//var AGGREGATORS = require('./AGGREGATORS');
-	var Tuple = require('./Tuple.js');
-	var Aggregator = require('./Aggregator.js');
-	var Grouping = require('./Grouping.js');
-	var Factory = require('./Factory.js');
+	var Tuple = datalog.Tuple;
+	var Aggregator = datalog.Aggregator;
+	var Grouping = datalog.Grouping;
+	var Factory = datalog.Factory;
+
+	console.log("Aggregator:" + Aggregator);
 
 	var Rule = function(predicateSymbol){
 		this.head = new Tuple(predicateSymbol);

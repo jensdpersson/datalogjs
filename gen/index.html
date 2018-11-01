@@ -1,0 +1,72 @@
+<html>
+    <head>
+        <title>DatalogJS Example Page</title>
+        <script src="datalog.js"></script>
+        <script>
+            var parser = new datalog.Parser();
+            var program = null;
+            parser.on('rule', function(rule){
+                program.addRule(rule);
+            });
+            parser.on('syntaxError', function(error){
+                alert(error);
+            });
+            parser.on('success', function(){
+                
+
+                var queryParser = new datalog.Parser();
+                var goals = [];
+                queryParser.on('rule', function(rule){
+                    goals.push(rule);
+                });
+                queryParser.on('success', function(){
+
+                    var table = document.getElementById("resultTable");
+                    table.innerHTML = "";
+                    program.query(goals, function(results){
+                        
+                        for(var i in results){
+                            var row = document.createElement("tr");
+                            var result = results[i];
+                            for(var j in result.slots){
+                                var slot = result.slots[j];
+                                var cell = document.createElement("td");
+                                cell.innerHTML = slot.symbol ? slot.symbol : slot;
+                                row.appendChild(cell);
+                            }
+                            table.appendChild(row);
+                        }
+                        
+                    });
+                });
+                queryParser.parse(document.getElementById("query").value);
+            });
+
+            function run_query(){
+                program = new datalog.Program();
+                var query = document.getElementById("program").value;
+                
+                parser.parse(query);
+            }
+        </script>
+        <style>
+            td {border: dotted 1px black}
+            tr {border: solid 1px black}
+        </style>
+    </head>
+    <body>
+        <form>
+            
+            <textarea id="program">
+
+            </textarea>
+            <textarea id="query">
+
+            </textarea>
+            <input type="button" value="Run Query" onclick="run_query()"/>
+        </form>
+        <table id="resultTable" style="border:1px solid black">
+            <tr><td><i>No results</i></td></tr>
+        </table>
+    </body>
+</html>

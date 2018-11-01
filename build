@@ -1,2 +1,8 @@
 #!/bin/sh
-node gulpfile.js
+SRC="Term Tuple Aggregation Aggregator Factory Predicate Substitution Goal Program Grouping Rule Lexer Parser"
+DST="gen/datalog.js"
+echo "var datalog = {}; if(typeof(module)!='undefined'){ module.exports = datalog; };" > $DST
+for F in $SRC; do
+    cat "src/main/js/$F.js" >> $DST
+done
+cp src/site/index.html gen/

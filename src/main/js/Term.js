@@ -1,4 +1,4 @@
-module.exports = (function(){
+datalog.Term = (function(){
 	
 	var Term = function(symbol, isVar, aggregator){
 		this.symbol = symbol;

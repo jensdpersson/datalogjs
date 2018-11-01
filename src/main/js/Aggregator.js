@@ -1,7 +1,9 @@
 
-var Term = require('./Term');
 
-module.exports = (function(){
+
+(function(){
+
+	var Term = datalog.Term;
 
 	var AGGREGATORS = {
 			max: function(acc, val){
@@ -29,7 +31,7 @@ module.exports = (function(){
 			}
 	};
 
-	var Aggregator = function(name){
+	datalog.Aggregator = function(name){
 		var aggregator = AGGREGATORS[name];
 		if(!aggregator){
 			throw "Unrecognized aggregator ["+name+"]";
@@ -46,7 +48,7 @@ module.exports = (function(){
 	//	this.template = template;
 	//}
 
-	Aggregator.prototype.merge = function(term, nextFactory){
+	datalog.Aggregator.prototype.merge = function(term, nextFactory){
 		console.log("Aggregator.merge");
 		this.acc = this.func(this.acc, term.value());
 		if(!this.next){
@@ -56,7 +58,7 @@ module.exports = (function(){
 	}
 
 
-	Aggregator.prototype.report = function(tuple, callback){
+	datalog.Aggregator.prototype.report = function(tuple, callback){
 		console.log("REPORT Aggregator " + this);
 		tuple.addTerm(Term.constant(this.acc));
 		if(this.next){
@@ -66,7 +68,4 @@ module.exports = (function(){
 			callback(tuple);
 		}
 	}
-
-	return Aggregator;
-
 })();

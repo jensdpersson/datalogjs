@@ -1,4 +1,4 @@
-module.exports = (function(){
+datalog.Predicate = (function(){
 		
 	function Cycle(predid){
 		this.predid = predid;

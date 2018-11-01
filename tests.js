@@ -4,9 +4,10 @@ var TEST_ROOT = './test/roundtrip/';
 var fs = require('fs');
 var util = require('util');
 
-var datalog = require('./datalog');
+var datalog = require('./gen/datalog');
+console.log(util.inspect(datalog));
 
-//Load each theory in ./tests/$test/inputs/
+//Load each program in ./tests/$test/inputs/
 //Run the query in ./tests/$test/query.datalog
 //serialize result, compare with ./tests/$test/facit.datalog
 
@@ -38,7 +39,7 @@ Test.prototype.run = function(){
     	if(err){
     		self.fail(err);
     	} else {
-    		var theory = new datalog.Theory();
+    		var program = new datalog.Program();
     		var c = inputFiles.length;
     		var fork = new Fork(c, function(){
     			fs.readFile(self.folder + "/query.datalog", function(err, queryData){
@@ -51,7 +52,7 @@ Test.prototype.run = function(){
     					self.fail(err);
     				});
     				parser.on('success', function(){
-    					theory.query(goals, function(responseTuples){
+    					program.query(goals, function(responseTuples){
     						var response = [];
     						responseTuples.forEach(function(tuple){
     							response.push(tuple.toString());
@@ -101,7 +102,7 @@ Test.prototype.run = function(){
     				}
     				var parser = new datalog.Parser();
     				parser.on('rule', function(rule){
-    					theory.addRule(rule);
+    					program.addRule(rule);
     				});
     				parser.on('syntaxError', function(err){self.fail(err);});
     				parser.on('success', function(){fork.join();});

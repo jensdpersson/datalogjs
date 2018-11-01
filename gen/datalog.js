@@ -1,30 +1,155 @@
+var datalog = {}; if(typeof(module)!='undefined'){ module.exports = datalog; };
+datalog.Term = (function(){
+	
+	var Term = function(symbol, isVar, aggregator){
+		this.symbol = symbol;
+		this.isVar = !!isVar;
+		this.aggregator = aggregator;
+		this.isAggregate = !!aggregator;
+	};
+	
+	Term.constant = function(symbol){
+		return new Term(symbol);	
+	}
+	Term.aggregator = function(symbol, aggregator){
+		return new Term(symbol, true, aggregator);	
+	}
+	Term.variable = function(symbol){
+		return new Term(symbol, true);	
+	}
+	
+	Term.prototype.value = function(){
+		var num = Number(this.symbol);
+		if(isNaN(num)){
+			throw "Term " + this + " is not numeric in value()";
+		}
+		return num;
+	};
+	
+	Term.prototype.toString = function(){
+		return "Term(" + this.symbol + "," + this.isVar + ")";
+	}
+	
+	return Term;
+})();
+(function(){
 
-var util = require('util');
-var Tuple = require('./Tuple');
+	var Term = datalog.Term;
 
+	datalog.Tuple = function(predicateSymbol){
+		this.isNegated = false;
+		this.slots = [];
+		if(predicateSymbol){
+			this.slots.push(predicateSymbol);
+		}
+	};
 
-module.exports = (function(){
+	var Tuple = datalog.Tuple;
 
-	/*
-	 * we must keep two structures. One template list with
-	 * objects that either just Grouper or Agger(aggregatorFunction)
-	 *
-	 * Then there is Chain. The chain knows about the above list, because
-	 * when it needs to fork, it must instantiate a new chain based on the
-	 * above list, from its own index and down.
-	 *
-	 * Perhaps Tree is better name than Chain.
-	 *
-	 */
+	var isAggregated = false;
+	var isGrounded = false;
 
-	var Aggregation = function(aggs){
+	datalog.Tuple.prototype.addTerm = function(term){
+		this.slots.push(term);
+		if(term.isVar){
+			isGrounded = false;
+		} else if(term.isAggregate){
+			isAggregated = true;
+		}
+	};
+
+	datalog.Tuple.prototype.predicateSymbol = function(){
+		return this.slots.length > 1 ? this.slots[0] : null;
+	}
+
+	datalog.Tuple.prototype.arity = function(){
+		return this.slots.length - 1;
+	};
+
+	datalog.Tuple.prototype.isAggregated = function(){
+		return isAggregated;
+	}
+
+	datalog.Tuple.prototype.isGrounded = function(){
+		return isGrounded;
+	}
+
+	datalog.Tuple.prototype.predicateId = function(){
+		return this.slots[0] + "/" + (this.slots.length - 1);
+	}
+
+	datalog.Tuple.prototype.copy = function(){
+		var rv = new Tuple();
+		for(var i=0;i<this.slots.length;i++){
+			rv.addTerm(this.slots[i]);
+		}
+		return rv;
+	}
+
+	//Tuple.prototype.unify = function(that){
+	//	var subst = new Substitution(this, that);
+	//	if(subst.compute()){
+	//		return subst;
+	//	}
+	//	return null;
+	//}
+
+	datalog.Tuple.prototype.ground = function(substitution){
+		console.log(this.toString() + "/" + substitution.toString());
+		var retval = new Tuple();
+		for(var i in this.slots){
+			var term = this.slots[i];
+			//console.log("copy " + util.inspect(term));
+			if(term.isVar){
+				retval.slots.push(substitution.lookup(term));
+			} else {
+				retval.slots.push(term);
+			}
+		}
+		return retval;
+	}
+
+	datalog.Tuple.prototype.renamedCopy = function(suffix){
+		var retval = new datalog.Tuple();
+		for(var i in this.slots){
+			var term = this.slots[i];
+			if(term.isVar){
+				retval.slots.push(Term.variable(term.symbol + suffix));
+			} else {
+				retval.slots.push(term);
+			}
+		}
+		return retval;
+	}
+
+	datalog.Tuple.prototype.toString = function(){
+		var retval = "";
+		var last = this.slots.length - 1;
+		this.slots.forEach(function(slot, ix){
+			if(ix == 0){
+				retval += slot + "(";
+			} else {
+				retval += slot.symbol;
+				if(ix < last){
+					retval += ","
+				}
+			}
+		});
+		return retval + ")";
+	}
+
+}());
+
+(function(){
+
+	var Tuple = datalog.Tuple;
+
+	datalog.Aggregation = function(aggs){
 		this.aggs = aggs;
-	//	console.log("Aggregation("+ util.inspect(aggs[0]) +")");
 		this.root = aggs[0].create();
 	};
 
-	Aggregation.prototype.merge = function(solution){
-		console.log("AGGREGATING " + solution.predicateSymbol());
+	datalog.Aggregation.prototype.merge = function(solution){
 		var slot = this.root;
 		this.predicateSymbol = solution.predicateSymbol();
 		for(var i=1;i<solution.slots.length;i++){
@@ -33,36 +158,31 @@ module.exports = (function(){
 			//Slots include the pred sym, the aggs dont.
 			//So the indices go into "the next" factory but "the current" slot
 
-			console.log("AGGREGATING SLOT AT " + i + " : " + util.inspect(value));
 			var nextFactory = false;
 			if(i < this.aggs.length){
 				nextFactory = this.aggs[i];
 			} else {
 				nextFactory = {create:function(){return null;}};
 			}
-			//console.log("nextFactory " + i + " < " + this.aggs.length + " " + nextFactory);
 			if(!slot.merge){
 				console.log("BAD SLOT at: " + i + " :" + util.inspect(slot));
 			}
-			//if(nextFactory){
 			slot = slot.merge(value, nextFactory);
-			//}
 		}
 	};
 
-	Aggregation.prototype.emitSolutions = function(callback){
+	datalog.Aggregation.prototype.emitSolutions = function(callback){
 		//console.log("EmitSolut");
 		this.root.report(new Tuple(this.predicateSymbol), callback);
 	}
 
-	return Aggregation;
-
 })();
 
 
-var Term = require('./Term');
 
-module.exports = (function(){
+(function(){
+
+	var Term = datalog.Term;
 
 	var AGGREGATORS = {
 			max: function(acc, val){
@@ -90,7 +210,7 @@ module.exports = (function(){
 			}
 	};
 
-	var Aggregator = function(name){
+	datalog.Aggregator = function(name){
 		var aggregator = AGGREGATORS[name];
 		if(!aggregator){
 			throw "Unrecognized aggregator ["+name+"]";
@@ -107,7 +227,7 @@ module.exports = (function(){
 	//	this.template = template;
 	//}
 
-	Aggregator.prototype.merge = function(term, nextFactory){
+	datalog.Aggregator.prototype.merge = function(term, nextFactory){
 		console.log("Aggregator.merge");
 		this.acc = this.func(this.acc, term.value());
 		if(!this.next){
@@ -117,7 +237,7 @@ module.exports = (function(){
 	}
 
 
-	Aggregator.prototype.report = function(tuple, callback){
+	datalog.Aggregator.prototype.report = function(tuple, callback){
 		console.log("REPORT Aggregator " + this);
 		tuple.addTerm(Term.constant(this.acc));
 		if(this.next){
@@ -127,479 +247,27 @@ module.exports = (function(){
 			callback(tuple);
 		}
 	}
-
-	return Aggregator;
-
 })();
-
-module.exports = (function(){
-  var Factory = function(){
+(function(){
+  datalog.Factory = function(){
     if(arguments.length < 1){
       throw "Factory needs parameters";
     }
     this.ctor = arguments[0];
+    console.log(arguments);
     this.args = [];
     for(var i=1;i<arguments.length;i++){
         this.args[i-1] = arguments[i];
     }
   };
 
-  Factory.prototype.create = function(){
+  datalog.Factory.prototype.create = function(){
+    console.log(this);
     var Ctor = this.ctor;
     return new Ctor(this.args);
   }
-
-  return Factory;
 })();
-
-var util = require('util');
-var Aggregation = require('./Aggregation');
-var Substitution = require('./Substitution');
-
-module.exports = (function(){
-	var Goal = function(tuple, theory){
-		//this.solutionListeners = [];
-		//this.tuple = tuple;
-		this.theory = theory;
-		this.solutionTemplate = tuple.renamedCopy("'");
-	};
-
-	//Goal.prototype.on = function(evt, listener){
-	//	this.solutionListeners.push(listener);
-	//}
-
-	//Goal.prototype.emit = function(evt){
-	//	this.solutionListeners.forEach(function(listener){
-	//		listener(evt);
-	//	});
-	//}
-
-	Goal.prototype.toString = function(){
-		return this.solutionTemplate.toString();
-	}
-
-	Goal.prototype.solve = function(callback){
-
-		//onDone = onDone || function(){};
-
-		var pred = this.theory.lookup(this.solutionTemplate.predicateId());
-		if(!pred){
-		//	callback();
-			return;
-		}
-
-		console.log("Solving for " + this + " using " + pred.rules);
-
-		var goal = this;
-
-		//var branchCount = pred.rules.length;
-
-		//var aggregations = [];
-
-		//var isDone = function(){
-		//	console.log("isDone? " + branchCount);
-		//	branchCount--;
-		//	return (branchCount < 1);
-		//}
-
-		pred.rules.forEach(function(rule){
-
-			console.log("RULE:" + rule);
-
-		  var aggregation = new Aggregation(rule.getAggregators());
-			//aggregations.push(aggregation);
-
-			var subst = new Substitution();
-			if(!subst.merge(goal.solutionTemplate, rule.head)){
-				//if(isDone()){
-					//callback();
-				//}
-				return;
-			}
-
-			var subgoals = rule.body;
-
-			var handleSolution = function(subst, nextIndex){
-				//var allSubGoalsDone = true;
-				if(subgoals.length <= nextIndex){
-					var toEmit = goal.solutionTemplate.ground(subst);
-					//goal.emit(toEmit);
-					//When can aggregation emit its solution? TODO
-					aggregation.merge(toEmit);
-//HERE decrease branch count?
-					return;
-				}
-				var newTuple = subgoals[nextIndex].ground(subst);
-				var subgoal = new Goal(newTuple, goal.theory);
-				subgoal.solve(function(solution){
-					//if(solution){
-						subst2 = new Substitution(subst);
-						subst2.merge(solution, newTuple);
-						handleSolution(subst2, nextIndex+1);
-					//} else {
-
-					//}
-				});
-				//var onSubGoalDone = function(){
-				//	allSubGoalsDone = true;
-				//}
-			//	allSubGoalsDone = false;
-				//subgoal.solve(onSubGoalDone);
-			};
-
-			handleSolution(subst, 0);
-			aggregation.emitSolutions(function(solution){
-				console.log("Agg emitting solution " + solution);
-				callback(solution);
-			});
-		});
-	}
-
-	return Goal;
-})();
-
-
-var util = require('util');
-var Term = require('./Term');
-
-module.exports = (function(){
-
-	var Grouping = function(){
-		this.values = {};
-		this.next = null;
-	};
-
-	Grouping.prototype.merge = function(term, nextFactory){
-		console.log("Grouping.merge");
-		var next = this.values[term.symbol];
-		if(!next){
-			next = nextFactory.create();
-			this.values[term.symbol] = next;
-		}
-		return next;
-	}
-
-  Grouping.prototype.report = function(terms, callback){
-		console.log("REPORT Grouping " + this);
-		for(var value in this.values){
-			var termsCopy = terms.copy();
-			termsCopy.addTerm(Term.constant(value));
-			var next = this.values[value];
-			if(next){
-				next.report(termsCopy, callback);
-			} else {
-				//console.log("EMITTING SOLUTION [" + util.inspect(termsCopy) + "]");
-				callback(termsCopy);
-			}
-		}
-	}
-
-	Grouping.prototype.toString = function(){
-		return util.inspect(this);
-	}
-
-	return Grouping;
-
-})();
-
-module.exports = (function(){
-
-	var Lexer = function(input){
-		this.left = input;
-		this.line = 0;
-	};
-	
-	Lexer.LPAR = 'LPAR';
-	Lexer.RPAR = 'RPAR';
-	Lexer.COMMA = 'COMMA';
-	Lexer.IF = 'IF';
-	Lexer.NAME = 'NAME';
-	Lexer.VARIABLE = 'VARIABLE';
-	Lexer.NUMBER = 'NUMBER';
-	Lexer.WHITE = 'WHITE';
-	Lexer.DOT = 'DOT';
-	Lexer.QUESTION = 'QUESTION';
-	Lexer.COMMENT = 'COMMENT';
-
-	Lexer.NOMATCH = 'NOMATCH';
-	
-	var tokenTypes = [
-	    {regex: /^\(/, type:Lexer.LPAR},
-	    {regex: /^\)/, type:Lexer.RPAR},
-	    {regex: /^,/, type:Lexer.COMMA},
-	    {regex: /^\:\-/, type:Lexer.IF},
-	    {regex: /^[a-z]\w+/, type:Lexer.NAME},
-	    {regex: /^[A-Z]\w*/, type:Lexer.VARIABLE},
-	    {regex: /^\d+/, type:Lexer.NUMBER},
-  		{regex: /^\s+/, type:Lexer.WHITE},
-  		{regex: /^\./, type:Lexer.DOT},
-  		{regex: /^\?/, type:Lexer.QUESTION},
-  		{regex: /^#.*\n/, type:Lexer.COMMENT}
-	];
-
-	Lexer.prototype.countLines = function(token){
-		for(var i=0;i<token.length;i++){
-			if(token.charAt(i) == "\n"){
-				this.line++;
-			}
-		}
-	}
-	
-	function Token(){
-		this.text = null;
-		this.line = null;
-		this.type = Lexer.NOMATCH;
-	}
-	
-	Lexer.prototype.hasMoreInput = function(){
-		return this.left.length > 0;
-	}
-	
-	Lexer.prototype.nextToken = function(){
-		var token = new Token();
-		token.line = this.line;
-		for(var i in tokenTypes){
-			var tokenType = tokenTypes[i];
-			var match = this.left.match(tokenType.regex);
-			if(match){
-				//console.log("match:[" + match + "] in [" + this.left + "] as [" + tokenType.type + "]");
-				
-				token.text = match[0];
-				token.type = tokenType.type;
-				
-				this.left = this.left.substring(token.text.length);
-				if(tokenType.type == Lexer.WHITE){
-					this.countLines(token.text);
-				}
-				
-				return token;
-			}
-		}
-		if(token.type == Lexer.NOMATCH){
-			token.text = this.left.substring(0, Math.min(this.left.length, 20));
-		}
-		return token;
-	}
-
-	return Lexer;
-
-})();
-
-var Lexer = require('./Lexer.js');
-var Rule = require('./Rule.js');
-var Term = require('./Term');
-var util = require('util');
-
-module.exports = (function(){
-	
-	var Parser = function(){
-		this.ruleListeners = [];
-		this.syntaxErrorListeners = [];
-		this.successListeners = [];
-		this.rule = null;
-	};
-	
-	Parser.prototype.emitRule = function(rule){
-		this.ruleListeners.forEach(function(listener){
-			listener(rule);
-		});
-	}
-	Parser.prototype.emitSyntaxError = function(syntaxError){
-		this.syntaxErrorListeners.forEach(function(listener){
-			listener(syntaxError);
-		});
-	}
-	Parser.prototype.emitSuccess = function(success){
-		this.successListeners.forEach(function(listener){
-			listener(success);
-		});
-	}
-	Parser.prototype.on = function(event, listener){
-		if(event == 'rule'){
-			this.ruleListeners.push(listener);
-		} else if(event == 'syntaxError'){
-			this.syntaxErrorListeners.push(listener);
-		} else if(event == 'success'){
-			this.successListeners.push(listener);
-		} else {
-			throw "Unsupported event type [" + event+ "]";
-		}
-		return this;
-	}
-	
-	Parser.prototype.beforeRule = function(token){
-		if(token.type == Lexer.NAME){
-			this.rule = new Rule(token.text);
-			return this.afterHeadPredicate
-		} else if(token.type == Lexer.WHITE){
-			return this.beforeRule;
-		} else if(token.type == Lexer.COMMENT){
-			return this.beforeRule;
-		} else {
-			this.emitSyntaxError("Expected token at line [" +
-								 token.line + "], got [" + token.text + "]");
-			return null;
-		}
-	}
-	
-	Parser.prototype.afterHeadPredicate = function(token){
-		if(token.type == Lexer.LPAR){
-			return this.expectHeadParam;
-		} else if(token.type == Lexer.WHITE){
-			return this.afterHeadPredicate;
-		} else {
-			this.emitSyntaxError("Expected '(' at line " + token.line);
-			return null;
-		}
-	}
-	
-	Parser.prototype.expectHeadParam = function(token){
-		if(token.type == Lexer.NAME){
-			this.paramOrAggregate = token.text;
-			return this.expectHeadVarOrParamCompletion;
-		} else if(token.type == Lexer.WHITE){
-			return this.expectHeadParam;
-		} else if(token.type == Lexer.NUMBER){
-			this.rule.head.addTerm(Term.constant(token.text));
-			return this.expectHeadParamCompletion;
-		} else if(token.type == Lexer.VARIABLE){
-			this.rule.head.addTerm(Term.variable(token.text));
-			this.paramOrAggregate = null;
-			return this.expectHeadParamCompletion;
-		} else {
-			this.emitSyntaxError("Expected NAME at line " + token.line);
-			return null;
-		}
-	}
-	
-	Parser.prototype.expectHeadParamCompletion = function(token){
-		if(token.type == Lexer.WHITE){
-			return this.expectHeadParamCompletion;
-		}
-		if(token.type == Lexer.COMMA){
-			return this.expectHeadParam;
-		} else if(token.type == Lexer.RPAR){
-			return this.afterHead; 
-		}
-	}
-	
-	Parser.prototype.expectHeadVarOrParamCompletion = function(token){
-		if(token.type == Lexer.WHITE){
-			return this.expectHeadVarOrParamCompletion;
-		}
-		if(!this.paramOrAggregate){
-			throw "Bad state assumption, paramOrAggregate not set";
-		}
-		if(token.type == Lexer.COMMA){
-			this.rule.head.addTerm(Term.constant(this.paramOrAggregate));
-			this.paramOrAggregate = null;
-			return this.expectHeadParam;
-		} else if(token.type == Lexer.VARIABLE){
-			this.rule.head.addTerm(Term.aggregator(token.text, this.paramOrAggregate));
-			this.paramOrAggregate = null;
-			return this.expectHeadParamCompletion;
-		} else if(token.type == Lexer.RPAR){
-			this.rule.head.addTerm(Term.constant(this.paramOrAggregate));
-			this.paramOrAggregate = null;
-			return this.afterHead; 
-		}
-	}
-	
-	Parser.prototype.afterHead = function(token){
-		if(token.type == Lexer.DOT){
-			this.emitRule(this.rule);
-			this.rule = null;
-			return this.beforeRule;
-		} else if(token.type == Lexer.WHITE){
-			return this.afterHead;
-		} else if(token.type == Lexer.IF){
-			return this.beforeSubGoal;
-		} else {
-			this.emitSyntaxError("Expected [.] or [:-] at line ["+token.line+"], not [" + token.text + "]");
-		}
-	}
-	
-	Parser.prototype.beforeSubGoal = function(token){
-		if(token.type == Lexer.WHITE){
-			return this.beforeSubGoal;
-		} else if (token.type == Lexer.NAME){
-			this.rule.addSubGoal(token.text);
-			return this.afterBodyPredicate;
-		} 
-	}
-	
-	Parser.prototype.afterBodyPredicate = function(token){
-		if(token.type == Lexer.LPAR){
-			return this.expectBodyParam;
-		} else if(token.type == Lexer.WHITE){
-			return this.afterBodyPredicate;
-		} else {
-			this.emitSyntaxError("Expected '(' at line " + token.line);
-			return null;
-		}
-	}
-	
-	Parser.prototype.expectBodyParam = function(token){
-		if(token.type == Lexer.NAME){
-			this.rule.lastSubGoal().addTerm(Term.constant(token.text));
-			return this.expectBodyParamCompletion;
-		} else if(token.type == Lexer.WHITE){
-			return this.expectBodyParam;
-		} else if(token.type == Lexer.NUMBER){
-			this.rule.lastSubGoal().addTerm(Term.number(token.text));
-			return this.expectBodyParamCompletion;
-		} else if(token.type == Lexer.VARIABLE){
-			this.rule.lastSubGoal().addTerm(Term.variable(token.text));
-			return this.expectBodyParamCompletion;
-		} else if(token.type == Lexer.RPAR){
-			return afterSubGoal;
-		}
-	}
-	
-	Parser.prototype.expectBodyParamCompletion = function(token){
-		if(token.type == Lexer.WHITE){
-			return this.expectBodyParamCompletion;
-		}
-		if(token.type == Lexer.COMMA){
-			return this.expectBodyParam;
-		} else if(token.type == Lexer.RPAR){
-			return this.afterSubGoal; 
-		}
-	}
-	
-	Parser.prototype.afterSubGoal = function(token){
-		if(token.type == Lexer.DOT){
-			this.emitRule(this.rule);
-			this.rule = null;
-			return this.beforeRule;
-		} else if(token.type == Lexer.WHITE){
-			return this.afterSubGoal;
-		} else if(token.type == Lexer.COMMA){
-			return this.beforeSubGoal;
-		} else {
-			this.emitSyntaxError("Expected [.] or [,] at line ["+token.line+"], not [" + token.text + "]");
-		}
-	}
-	
-	Parser.prototype.parse = function(string){
-		var lexer = new Lexer(string);
-		var state = this.beforeRule;
-		while(lexer.hasMoreInput()){
-			var token = lexer.nextToken();
-			//console.log("state: " + state);
-			var newstate = state.call(this, token); 
-			if(!newstate){
-				throw "Bad state transition on token.type == "+token.type+" from state " + state; 
-				break;
-			}
-			state = newstate;
-		}
-		this.emitSuccess("Parser reached EOF without error");
-	}
-	
-	return Parser;
-})();
-module.exports = (function(){
+datalog.Predicate = (function(){
 		
 	function Cycle(predid){
 		this.predid = predid;
@@ -694,70 +362,7 @@ module.exports = (function(){
 	return Predicate;
 	
 }());
-
-
-module.exports = (function(){
-
-	//var AGGREGATORS = require('./AGGREGATORS');
-	var Tuple = require('./Tuple.js');
-	var Aggregator = require('./Aggregator.js');
-	var Grouping = require('./Grouping.js');
-	var Factory = require('./Factory.js');
-
-	var Rule = function(predicateSymbol){
-		this.head = new Tuple(predicateSymbol);
-		this.body = [];
-	};
-
-	Rule.prototype.addSubGoal = function(predicateSymbol){
-		this.body.push(new Tuple(predicateSymbol));
-	}
-
-	Rule.prototype.lastSubGoal = function(){
-		if(this.body.length == 0){
-			return null;
-		}
-		return this.body[this.body.length-1];
-	}
-
-	Rule.prototype.getAggregators = function(){
-		if(!this.aggregators){
-			this.aggregators = [];
-			for(var i=1;i<this.head.slots.length;i++){
-				var slot = this.head.slots[i];
-				var agg = null;
-				if(slot.aggregator){
-					agg = new Factory(Aggregator, slot.aggregator);
-				} else {
-					agg = new Factory(Grouping);
-				}
-				//agg.setIndex(i);
-				//agg.setTemplateChain(this.aggregators);
-				this.aggregators.push(agg);
-			}
-		}
-		return this.aggregators;
-	}
-
-	Rule.prototype.toString = function(){
-		var retval = this.head.toString();
-		for(var i = 0; i< this.body.length;i++){
-			if(i != 0){
-				retval += ", ";
-			} else {
-				retval += " :- "
-			}
-			retval += this.body[i].toString();
-		}
-		return retval + ".";
-	}
-
-	return Rule;
-}());
-
-var insp = require('util').inspect;
-
-module.exports = (function(){
+datalog.Substitution = (function(){
 
 	var Substitution = function(parent){//a, b){
 		//this.a = a;
@@ -906,46 +511,122 @@ module.exports = (function(){
 	return Substitution;
 })();
 
-module.exports = (function(){
-	
-	var Term = function(symbol, isVar, aggregator){
-		this.symbol = symbol;
-		this.isVar = !!isVar;
-		this.aggregator = aggregator;
-		this.isAggregate = !!aggregator;
+
+(function(){
+
+	var Aggregation = datalog.Aggregation;
+	var Substitution = datalog.Substitution;
+	var Tuple = datalog.Tuple;
+
+	datalog.Goal = function(tuple, theory){
+		//this.solutionListeners = [];
+		//this.tuple = tuple;
+		this.theory = theory;
+		this.solutionTemplate = tuple.renamedCopy("'");
 	};
-	
-	Term.constant = function(symbol){
-		return new Term(symbol);	
+
+	var Goal = datalog.Goal;
+
+	//Goal.prototype.on = function(evt, listener){
+	//	this.solutionListeners.push(listener);
+	//}
+
+	//Goal.prototype.emit = function(evt){
+	//	this.solutionListeners.forEach(function(listener){
+	//		listener(evt);
+	//	});
+	//}
+
+	datalog.Goal.prototype.toString = function(){
+		return this.solutionTemplate.toString();
 	}
-	Term.aggregator = function(symbol, aggregator){
-		return new Term(symbol, true, aggregator);	
-	}
-	Term.variable = function(symbol){
-		return new Term(symbol, true);	
-	}
-	
-	Term.prototype.value = function(){
-		var num = Number(this.symbol);
-		if(isNaN(num)){
-			throw "Term " + this + " is not numeric in value()";
+
+	datalog.Goal.prototype.solve = function(callback){
+
+		//onDone = onDone || function(){};
+
+		var pred = this.theory.lookup(this.solutionTemplate.predicateId());
+		if(!pred){
+		//	callback();
+			return;
 		}
-		return num;
-	};
-	
-	Term.prototype.toString = function(){
-		return "Term(" + this.symbol + "," + this.isVar + ")";
+
+		console.log("Solving for " + this + " using " + pred.rules);
+
+		var goal = this;
+
+		//var branchCount = pred.rules.length;
+
+		//var aggregations = [];
+
+		//var isDone = function(){
+		//	console.log("isDone? " + branchCount);
+		//	branchCount--;
+		//	return (branchCount < 1);
+		//}
+
+		pred.rules.forEach(function(rule){
+
+			console.log("RULE:" + rule);
+
+		  var aggregation = new Aggregation(rule.getAggregators());
+			//aggregations.push(aggregation);
+
+			var subst = new Substitution();
+			if(!subst.merge(goal.solutionTemplate, rule.head)){
+				//if(isDone()){
+					//callback();
+				//}
+				return;
+			}
+
+			var subgoals = rule.body;
+
+			var handleSolution = function(subst, nextIndex){
+				//var allSubGoalsDone = true;
+				if(subgoals.length <= nextIndex){
+					var toEmit = goal.solutionTemplate.ground(subst);
+					//goal.emit(toEmit);
+					//When can aggregation emit its solution? TODO
+					aggregation.merge(toEmit);
+//HERE decrease branch count?
+					return;
+				}
+				var newTuple = subgoals[nextIndex].ground(subst);
+				var subgoal = new Goal(newTuple, goal.theory);
+				subgoal.solve(function(solution){
+					//if(solution){
+						subst2 = new Substitution(subst);
+						subst2.merge(solution, newTuple);
+						handleSolution(subst2, nextIndex+1);
+					//} else {
+
+					//}
+				});
+				//var onSubGoalDone = function(){
+				//	allSubGoalsDone = true;
+				//}
+			//	allSubGoalsDone = false;
+				//subgoal.solve(onSubGoalDone);
+			};
+
+			handleSolution(subst, 0);
+			aggregation.emitSolutions(function(solution){
+				console.log("Agg emitting solution " + solution);
+				callback(solution);
+			});
+		});
 	}
-	
-	return Term;
 })();
 
-var Predicate = require('./Predicate.js');
-var Goal = require('./Goal.js');
 
-module.exports = (function(){
 
-	function Theory(){
+ (function(){
+
+	var Predicate = datalog.Predicate;
+	var Goal = datalog.Goal;
+
+	datalog.Program = function(){
 		this.rules = [];
 		this.predicates = {};
 
@@ -956,7 +637,7 @@ module.exports = (function(){
 		}
 	}
 
-	Theory.prototype.addRule = function(rule){
+	datalog.Program.prototype.addRule = function(rule){
 		this.rules.push(rule);
 
 		var predicateId = rule.head.predicateId();
@@ -969,7 +650,7 @@ module.exports = (function(){
 
 	}
 
-	Theory.prototype.query = function(goals, callback){
+	datalog.Program.prototype.query = function(goals, callback){
 		var answerset = [];
 		for(var ix in goals){
 			var goal = new Goal(goals[ix].head, this);
@@ -984,7 +665,7 @@ module.exports = (function(){
 		callback(answerset);
 	}
 
-	Theory.prototype.validate = function(){
+	datalog.Program.prototype.validate = function(){
 		var errors = [];
 		for(var predId in predicates){
 			var pred = predicates[predId];
@@ -996,116 +677,401 @@ module.exports = (function(){
 		}
 		return errors;
 	}
-
-	return Theory;
 })();
 
 
-var Term = require('./Term');
-var Substitution = require('./Substitution');
-//var util = require('util');
+(function(){
 
-module.exports = (function(){
+	var Term = datalog.Term;
 
-	var Tuple = function(predicateSymbol){
-		this.isNegated = false;
-		this.slots = [];
-		if(predicateSymbol){
-			this.slots.push(predicateSymbol);
-		}
+	datalog.Grouping = function(){
+		this.values = {};
+		this.next = null;
 	};
 
-	var isAggregated = false;
-	var isGrounded = false;
-
-	Tuple.prototype.addTerm = function(term){
-		this.slots.push(term);
-		if(term.isVar){
-			isGrounded = false;
-		} else if(term.isAggregate){
-			isAggregated = true;
+	datalog.Grouping.prototype.merge = function(term, nextFactory){
+		console.log("Grouping.merge");
+		var next = this.values[term.symbol];
+		if(!next){
+			next = nextFactory.create();
+			this.values[term.symbol] = next;
 		}
-	};
-
-	Tuple.prototype.predicateSymbol = function(){
-		return this.slots.length > 1 ? this.slots[0] : null;
+		return next;
 	}
 
-	Tuple.prototype.arity = function(){
-		return this.slots.length - 1;
-	};
-
-	Tuple.prototype.isAggregated = function(){
-		return isAggregated;
-	}
-
-	Tuple.prototype.isGrounded = function(){
-		return isGrounded;
-	}
-
-	Tuple.prototype.predicateId = function(){
-		return this.slots[0] + "/" + (this.slots.length - 1);
-	}
-
-	Tuple.prototype.copy = function(){
-		var rv = new Tuple();
-		for(var i=0;i<this.slots.length;i++){
-			rv.addTerm(this.slots[i]);
+	datalog.Grouping.prototype.report = function(terms, callback){
+		console.log("REPORT Grouping " + this);
+		for(var value in this.values){
+			var termsCopy = terms.copy();
+			termsCopy.addTerm(Term.constant(value));
+			var next = this.values[value];
+			if(next){
+				next.report(termsCopy, callback);
+			} else {
+				//console.log("EMITTING SOLUTION [" + util.inspect(termsCopy) + "]");
+				callback(termsCopy);
+			}
 		}
-		return rv;
 	}
 
-	//Tuple.prototype.unify = function(that){
-	//	var subst = new Substitution(this, that);
-	//	if(subst.compute()){
-	//		return subst;
-	//	}
-	//	return null;
+	//Grouping.prototype.toString = function(){
+	//	return util.inspect(this);
 	//}
+})();
 
-	Tuple.prototype.ground = function(substitution){
-		console.log(this.toString() + "/" + substitution.toString());
-		var retval = new Tuple();
-		for(var i in this.slots){
-			var term = this.slots[i];
-			//console.log("copy " + util.inspect(term));
-			if(term.isVar){
-				retval.slots.push(substitution.lookup(term));
-			} else {
-				retval.slots.push(term);
-			}
-		}
-		return retval;
+
+datalog.Rule = (function(){
+
+	//var AGGREGATORS = require('./AGGREGATORS');
+	var Tuple = datalog.Tuple;
+	var Aggregator = datalog.Aggregator;
+	var Grouping = datalog.Grouping;
+	var Factory = datalog.Factory;
+
+	console.log("Aggregator:" + Aggregator);
+
+	var Rule = function(predicateSymbol){
+		this.head = new Tuple(predicateSymbol);
+		this.body = [];
+	};
+
+	Rule.prototype.addSubGoal = function(predicateSymbol){
+		this.body.push(new Tuple(predicateSymbol));
 	}
 
-	Tuple.prototype.renamedCopy = function(suffix){
-		var retval = new Tuple();
-		for(var i in this.slots){
-			var term = this.slots[i];
-			if(term.isVar){
-				retval.slots.push(Term.variable(term.symbol + suffix));
-			} else {
-				retval.slots.push(term);
-			}
+	Rule.prototype.lastSubGoal = function(){
+		if(this.body.length == 0){
+			return null;
 		}
-		return retval;
+		return this.body[this.body.length-1];
 	}
 
-	Tuple.prototype.toString = function(){
-		var retval = "";
-		var last = this.slots.length - 1;
-		this.slots.forEach(function(slot, ix){
-			if(ix == 0){
-				retval += slot + "(";
-			} else {
-				retval += slot.symbol;
-				if(ix < last){
-					retval += ","
+	Rule.prototype.getAggregators = function(){
+		if(!this.aggregators){
+			this.aggregators = [];
+			for(var i=1;i<this.head.slots.length;i++){
+				var slot = this.head.slots[i];
+				var agg = null;
+				if(slot.aggregator){
+					agg = new Factory(Aggregator, slot.aggregator);
+				} else {
+					agg = new Factory(Grouping);
 				}
+				//agg.setIndex(i);
+				//agg.setTemplateChain(this.aggregators);
+				this.aggregators.push(agg);
 			}
-		});
-		return retval + ")";
+		}
+		return this.aggregators;
 	}
 
-	return Tuple;
+	Rule.prototype.toString = function(){
+		var retval = this.head.toString();
+		for(var i = 0; i< this.body.length;i++){
+			if(i != 0){
+				retval += ", ";
+			} else {
+				retval += " :- "
+			}
+			retval += this.body[i].toString();
+		}
+		return retval + ".";
+	}
+
+	return Rule;
 }());
+datalog.Lexer = (function(){
+
+	var Lexer = function(input){
+		this.left = input;
+		this.line = 0;
+	};
+
+	Lexer.LPAR = 'LPAR';
+	Lexer.RPAR = 'RPAR';
+	Lexer.COMMA = 'COMMA';
+	Lexer.IF = 'IF';
+	Lexer.NAME = 'NAME';
+	Lexer.VARIABLE = 'VARIABLE';
+	Lexer.NUMBER = 'NUMBER';
+	Lexer.WHITE = 'WHITE';
+	Lexer.DOT = 'DOT';
+	Lexer.QUESTION = 'QUESTION';
+	Lexer.COMMENT = 'COMMENT';
+
+	Lexer.NOMATCH = 'NOMATCH';
+
+	var tokenTypes = [
+	    {regex: /^\(/, type:Lexer.LPAR},
+	    {regex: /^\)/, type:Lexer.RPAR},
+	    {regex: /^,/, type:Lexer.COMMA},
+	    {regex: /^\:\-/, type:Lexer.IF},
+	    {regex: /^[a-z]\w*/, type:Lexer.NAME},
+	    {regex: /^[A-Z]\w*/, type:Lexer.VARIABLE},
+	    {regex: /^\d+/, type:Lexer.NUMBER},
+  		{regex: /^\s+/, type:Lexer.WHITE},
+  		{regex: /^\./, type:Lexer.DOT},
+  		{regex: /^\?/, type:Lexer.QUESTION},
+  		{regex: /^#.*\n/, type:Lexer.COMMENT}
+	];
+
+	Lexer.prototype.countLines = function(token){
+		for(var i=0;i<token.length;i++){
+			if(token.charAt(i) == "\n"){
+				this.line++;
+			}
+		}
+	}
+
+	function Token(){
+		this.text = null;
+		this.line = null;
+		this.type = Lexer.NOMATCH;
+	}
+
+	Lexer.prototype.hasMoreInput = function(){
+		return this.left.length > 0;
+	}
+
+	Lexer.prototype.nextToken = function(){
+		var token = new Token();
+		token.line = this.line;
+		for(var i in tokenTypes){
+			var tokenType = tokenTypes[i];
+			var match = this.left.match(tokenType.regex);
+			if(match){
+				//console.log("match:[" + match + "] in [" + this.left + "] as [" + tokenType.type + "]");
+
+				token.text = match[0];
+				token.type = tokenType.type;
+
+				this.left = this.left.substring(token.text.length);
+				if(tokenType.type == Lexer.WHITE){
+					this.countLines(token.text);
+				}
+
+				return token;
+			}
+		}
+		if(token.type == Lexer.NOMATCH){
+			token.text = this.left.substring(0, Math.min(this.left.length, 20));
+		}
+		return token;
+	}
+
+	return Lexer;
+
+})();
+
+(function(){
+
+	var Lexer = datalog.Lexer;
+	var Rule = datalog.Rule;
+	var Term = datalog.Term;
+	
+	datalog.Parser = function(){
+		this.ruleListeners = [];
+		this.syntaxErrorListeners = [];
+		this.successListeners = [];
+		this.rule = null;
+	};
+
+	datalog.Parser.prototype.emitRule = function(rule){
+		this.ruleListeners.forEach(function(listener){
+			listener(rule);
+		});
+	}
+
+	datalog.Parser.prototype.emitSyntaxError = function(syntaxError){
+		this.syntaxErrorListeners.forEach(function(listener){
+			listener(syntaxError);
+		});
+	}
+	datalog.Parser.prototype.emitSuccess = function(success){
+		this.successListeners.forEach(function(listener){
+			listener(success);
+		});
+	}
+	datalog.Parser.prototype.on = function(event, listener){
+		if(event == 'rule'){
+			this.ruleListeners.push(listener);
+		} else if(event == 'syntaxError'){
+			this.syntaxErrorListeners.push(listener);
+		} else if(event == 'success'){
+			this.successListeners.push(listener);
+		} else {
+			throw "Unsupported event type [" + event+ "]";
+		}
+		return this;
+	}
+	
+	datalog.Parser.prototype.beforeRule = function(token){
+		if(token.type == Lexer.NAME){
+			this.rule = new Rule(token.text);
+			return this.afterHeadPredicate
+		} else if(token.type == Lexer.WHITE){
+			return this.beforeRule;
+		} else if(token.type == Lexer.COMMENT){
+			return this.beforeRule;
+		} else {
+			this.emitSyntaxError("Expected token at line [" +
+								 token.line + "], got [" + token.text + "]");
+			return null;
+		}
+	}
+	
+	datalog.Parser.prototype.afterHeadPredicate = function(token){
+		if(token.type == Lexer.LPAR){
+			return this.expectHeadParam;
+		} else if(token.type == Lexer.WHITE){
+			return this.afterHeadPredicate;
+		} else {
+			this.emitSyntaxError("Expected '(' at line " + token.line);
+			return null;
+		}
+	}
+	
+	datalog.Parser.prototype.expectHeadParam = function(token){
+		if(token.type == Lexer.NAME){
+			this.paramOrAggregate = token.text;
+			return this.expectHeadVarOrParamCompletion;
+		} else if(token.type == Lexer.WHITE){
+			return this.expectHeadParam;
+		} else if(token.type == Lexer.NUMBER){
+			this.rule.head.addTerm(Term.constant(token.text));
+			return this.expectHeadParamCompletion;
+		} else if(token.type == Lexer.VARIABLE){
+			this.rule.head.addTerm(Term.variable(token.text));
+			this.paramOrAggregate = null;
+			return this.expectHeadParamCompletion;
+		} else {
+			this.emitSyntaxError("Expected NAME at line " + token.line);
+			return null;
+		}
+	}
+	
+	datalog.Parser.prototype.expectHeadParamCompletion = function(token){
+		if(token.type == Lexer.WHITE){
+			return this.expectHeadParamCompletion;
+		}
+		if(token.type == Lexer.COMMA){
+			return this.expectHeadParam;
+		} else if(token.type == Lexer.RPAR){
+			return this.afterHead; 
+		}
+	}
+	
+	datalog.Parser.prototype.expectHeadVarOrParamCompletion = function(token){
+		if(token.type == Lexer.WHITE){
+			return this.expectHeadVarOrParamCompletion;
+		}
+		if(!this.paramOrAggregate){
+			throw "Bad state assumption, paramOrAggregate not set";
+		}
+		if(token.type == Lexer.COMMA){
+			this.rule.head.addTerm(Term.constant(this.paramOrAggregate));
+			this.paramOrAggregate = null;
+			return this.expectHeadParam;
+		} else if(token.type == Lexer.VARIABLE){
+			this.rule.head.addTerm(Term.aggregator(token.text, this.paramOrAggregate));
+			this.paramOrAggregate = null;
+			return this.expectHeadParamCompletion;
+		} else if(token.type == Lexer.RPAR){
+			this.rule.head.addTerm(Term.constant(this.paramOrAggregate));
+			this.paramOrAggregate = null;
+			return this.afterHead; 
+		}
+	}
+	
+	datalog.Parser.prototype.afterHead = function(token){
+		if(token.type == Lexer.DOT){
+			this.emitRule(this.rule);
+			this.rule = null;
+			return this.beforeRule;
+		} else if(token.type == Lexer.WHITE){
+			return this.afterHead;
+		} else if(token.type == Lexer.IF){
+			return this.beforeSubGoal;
+		} else {
+			this.emitSyntaxError("Expected [.] or [:-] at line ["+token.line+"], not [" + token.text + "]");
+		}
+	}
+	
+	datalog.Parser.prototype.beforeSubGoal = function(token){
+		if(token.type == Lexer.WHITE){
+			return this.beforeSubGoal;
+		} else if (token.type == Lexer.NAME){
+			this.rule.addSubGoal(token.text);
+			return this.afterBodyPredicate;
+		} 
+	}
+	
+	datalog.Parser.prototype.afterBodyPredicate = function(token){
+		if(token.type == Lexer.LPAR){
+			return this.expectBodyParam;
+		} else if(token.type == Lexer.WHITE){
+			return this.afterBodyPredicate;
+		} else {
+			this.emitSyntaxError("Expected '(' at line " + token.line);
+			return null;
+		}
+	}
+	
+	datalog.Parser.prototype.expectBodyParam = function(token){
+		if(token.type == Lexer.NAME){
+			this.rule.lastSubGoal().addTerm(Term.constant(token.text));
+			return this.expectBodyParamCompletion;
+		} else if(token.type == Lexer.WHITE){
+			return this.expectBodyParam;
+		} else if(token.type == Lexer.NUMBER){
+			this.rule.lastSubGoal().addTerm(Term.number(token.text));
+			return this.expectBodyParamCompletion;
+		} else if(token.type == Lexer.VARIABLE){
+			this.rule.lastSubGoal().addTerm(Term.variable(token.text));
+			return this.expectBodyParamCompletion;
+		} else if(token.type == Lexer.RPAR){
+			return afterSubGoal;
+		}
+	}
+	
+	datalog.Parser.prototype.expectBodyParamCompletion = function(token){
+		if(token.type == Lexer.WHITE){
+			return this.expectBodyParamCompletion;
+		}
+		if(token.type == Lexer.COMMA){
+			return this.expectBodyParam;
+		} else if(token.type == Lexer.RPAR){
+			return this.afterSubGoal; 
+		}
+	}
+	
+	datalog.Parser.prototype.afterSubGoal = function(token){
+		if(token.type == Lexer.DOT){
+			this.emitRule(this.rule);
+			this.rule = null;
+			return this.beforeRule;
+		} else if(token.type == Lexer.WHITE){
+			return this.afterSubGoal;
+		} else if(token.type == Lexer.COMMA){
+			return this.beforeSubGoal;
+		} else {
+			this.emitSyntaxError("Expected [.] or [,] at line ["+token.line+"], not [" + token.text + "]");
+		}
+	}
+	
+	datalog.Parser.prototype.parse = function(string){
+		var lexer = new Lexer(string);
+		var state = this.beforeRule;
+		while(lexer.hasMoreInput()){
+			var token = lexer.nextToken();
+			//console.log("state: " + state);
+			var newstate = state.call(this, token); 
+			if(!newstate){
+				throw "Bad state transition on token.type == "+token.type+" from state " + state; 
+				break;
+			}
+			state = newstate;
+		}
+		this.emitSuccess("Parser reached EOF without error");
+	}	
+})();

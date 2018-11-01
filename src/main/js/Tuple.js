@@ -1,11 +1,9 @@
 
-var Term = require('./Term');
-var Substitution = require('./Substitution');
-//var util = require('util');
+(function(){
 
-module.exports = (function(){
+	var Term = datalog.Term;
 
-	var Tuple = function(predicateSymbol){
+	datalog.Tuple = function(predicateSymbol){
 		this.isNegated = false;
 		this.slots = [];
 		if(predicateSymbol){
@@ -13,10 +11,12 @@ module.exports = (function(){
 		}
 	};
 
+	var Tuple = datalog.Tuple;
+
 	var isAggregated = false;
 	var isGrounded = false;
 
-	Tuple.prototype.addTerm = function(term){
+	datalog.Tuple.prototype.addTerm = function(term){
 		this.slots.push(term);
 		if(term.isVar){
 			isGrounded = false;
@@ -25,27 +25,27 @@ module.exports = (function(){
 		}
 	};
 
-	Tuple.prototype.predicateSymbol = function(){
+	datalog.Tuple.prototype.predicateSymbol = function(){
 		return this.slots.length > 1 ? this.slots[0] : null;
 	}
 
-	Tuple.prototype.arity = function(){
+	datalog.Tuple.prototype.arity = function(){
 		return this.slots.length - 1;
 	};
 
-	Tuple.prototype.isAggregated = function(){
+	datalog.Tuple.prototype.isAggregated = function(){
 		return isAggregated;
 	}
 
-	Tuple.prototype.isGrounded = function(){
+	datalog.Tuple.prototype.isGrounded = function(){
 		return isGrounded;
 	}
 
-	Tuple.prototype.predicateId = function(){
+	datalog.Tuple.prototype.predicateId = function(){
 		return this.slots[0] + "/" + (this.slots.length - 1);
 	}
 
-	Tuple.prototype.copy = function(){
+	datalog.Tuple.prototype.copy = function(){
 		var rv = new Tuple();
 		for(var i=0;i<this.slots.length;i++){
 			rv.addTerm(this.slots[i]);
@@ -61,7 +61,7 @@ module.exports = (function(){
 	//	return null;
 	//}
 
-	Tuple.prototype.ground = function(substitution){
+	datalog.Tuple.prototype.ground = function(substitution){
 		console.log(this.toString() + "/" + substitution.toString());
 		var retval = new Tuple();
 		for(var i in this.slots){
@@ -76,8 +76,8 @@ module.exports = (function(){
 		return retval;
 	}
 
-	Tuple.prototype.renamedCopy = function(suffix){
-		var retval = new Tuple();
+	datalog.Tuple.prototype.renamedCopy = function(suffix){
+		var retval = new datalog.Tuple();
 		for(var i in this.slots){
 			var term = this.slots[i];
 			if(term.isVar){
@@ -89,7 +89,7 @@ module.exports = (function(){
 		return retval;
 	}
 
-	Tuple.prototype.toString = function(){
+	datalog.Tuple.prototype.toString = function(){
 		var retval = "";
 		var last = this.slots.length - 1;
 		this.slots.forEach(function(slot, ix){
@@ -105,5 +105,4 @@ module.exports = (function(){
 		return retval + ")";
 	}
 
-	return Tuple;
 }());
