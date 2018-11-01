@@ -39,19 +39,24 @@ To keep the promise of no infinite loops and a timely termination even with nega
  Usage
  -------
  
- //The theory collects rules and calculates results.
+ //The program collects rules and calculates results.
+
  var program = new datalog.Program();
 
 //The parser converts datalog source text to rules usable by the Theory.
+
 var parser = new datalog.Parser();
 
 // Parser emits some events when parsing 
+
 parser.on('rule', function(rule){
 	program.addRule(rule);
 });
+
 parser.on('syntaxError', function(error){
     console.log(error);
 });
+
 parser.on('success', function(){
     //Now we can query
     
