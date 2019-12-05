@@ -39,6 +39,7 @@ To keep the promise of no infinite loops and a timely termination even with nega
  Usage
  -------
  
+ ```javascript
  //The program collects rules and calculates results.
 
  var program = new datalog.Program();
@@ -61,6 +62,7 @@ parser.on('success', function(){
     //Now we can query
     
 });
+```
  
 
  
