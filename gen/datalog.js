@@ -18,6 +18,11 @@ datalog.Term = (function(){
 		return new Term(symbol, true);	
 	}
 	
+	Term.create = function(symbol) {
+	    let isVar = /^[A-Z]+/.test(symbol);
+	    return new Term(symbol, isVar);
+	}
+	
 	Term.prototype.value = function(){
 		var num = Number(this.symbol);
 		if(isNaN(num)){
@@ -625,6 +630,7 @@ datalog.Substitution = (function(){
 
 	var Predicate = datalog.Predicate;
 	var Goal = datalog.Goal;
+	var Term = datalog.Term;
 
 	datalog.Program = function(){
 		this.rules = [];
@@ -638,6 +644,26 @@ datalog.Substitution = (function(){
 	}
 
 	datalog.Program.prototype.addRule = function(rule){
+	    
+	    if (!(rule instanceof datalog.Rule)) {
+	        var head = rule.head;
+	        var rule2 = new datalog.Rule(head[0]);
+	        for (let i=1; i<head.length; i++) {
+	            rule2.head.addTerm(Term.create(head[i]));
+	        }
+	        var body = rule.body;
+	        if (body) {
+	            for (let i=0; i<body.length; i++) {
+	                let bodyterm = body[i];
+	                let tuple = rule2.addSubGoal(bodyterm[0]);
+	                for (let j=1; j<bodyterm.length; j++) {
+	                    tuple.addTerm(Term.create(bodyterm[j]));
+	                }
+	            }
+	        }
+	        rule = rule2;
+	    }
+	    
 		this.rules.push(rule);
 
 		var predicateId = rule.head.predicateId();
@@ -654,7 +680,15 @@ datalog.Substitution = (function(){
 		var answerset = [];
 		for(var ix in goals){
 			//var goal = new Goal(goals[ix].head, this);
-			var goal = new Goal(goals[ix], this);
+			var tuple = goals[ix];
+			if (!(tuple instanceof datalog.Tuple)) {
+			    var tuple2 = new datalog.Tuple(tuple[0]);
+			    for (var i=1;i<tuple.length;i++) {
+			        tuple2.addTerm(Term.create(tuple[i]));
+			    }
+			    tuple = tuple2;
+			}
+			var goal = new Goal(tuple, this);
 			//goal.on('solution', );
 			goal.solve(function(solution){
 				console.log("Got top solution " + solution);
@@ -737,7 +771,9 @@ datalog.Rule = (function(){
 	};
 
 	Rule.prototype.addSubGoal = function(predicateSymbol){
-		this.body.push(new Tuple(predicateSymbol));
+	    let tuple = new Tuple(predicateSymbol);
+		this.body.push(tuple);
+		return tuple;
 	}
 
 	Rule.prototype.lastSubGoal = function(){

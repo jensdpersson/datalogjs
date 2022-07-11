@@ -16,7 +16,9 @@ datalog.Rule = (function(){
 	};
 
 	Rule.prototype.addSubGoal = function(predicateSymbol){
-		this.body.push(new Tuple(predicateSymbol));
+	    let tuple = new Tuple(predicateSymbol);
+		this.body.push(tuple);
+		return tuple;
 	}
 
 	Rule.prototype.lastSubGoal = function(){

@@ -17,6 +17,11 @@ datalog.Term = (function(){
 		return new Term(symbol, true);	
 	}
 	
+	Term.create = function(symbol) {
+	    let isVar = /^[A-Z]+/.test(symbol);
+	    return new Term(symbol, isVar);
+	}
+	
 	Term.prototype.value = function(){
 		var num = Number(this.symbol);
 		if(isNaN(num)){
