@@ -33,7 +33,8 @@
 	datalog.Program.prototype.query = function(goals, callback){
 		var answerset = [];
 		for(var ix in goals){
-			var goal = new Goal(goals[ix].head, this);
+			//var goal = new Goal(goals[ix].head, this);
+			var goal = new Goal(goals[ix], this);
 			//goal.on('solution', );
 			goal.solve(function(solution){
 				console.log("Got top solution " + solution);

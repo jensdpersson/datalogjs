@@ -46,7 +46,7 @@ Test.prototype.run = function(){
     				var parser = new datalog.Parser();
     				var goals = [];
     				parser.on('rule', function(rule){
-    					goals.push(rule);
+    					goals.push(rule.head);
     				});
     				parser.on('syntaxError', function(err){
     					self.fail(err);
